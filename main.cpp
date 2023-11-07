@@ -1,53 +1,55 @@
-//! схема No6, nt=6, a=6, b=7, c=9, d=8, e=5, f=9, g=7, h=4, i=9, j=6
-
-#include <vector>
-#include <iostream>
-#include "set.h"
-#include "helpers.h"
-#include <latch>
+#include <set>
 #include <thread>
 #include <barrier>
+#include <map>
+#include <latch>
+#include "set.h"
+#include "helpers.h"
 
-const int nt =6;
-std::barrier final(6, []{ synchronizedOut("----------------------------------------------\n"); });
+const int nt = 6;
+std::latch allwork(70);
+std::barrier workerThreadStoppedBarrier(nt);
+//[]{ synchronizedOut("Barrier reached!\n"); }
+
+class WorkerThread{
+private:
+    std::multimap<std::string,int> m;
+public:
+    WorkerThread(const std::multimap<std::string,int> &s) : m(s){};
+    void operator()(){
+        for (const auto& [key, value]: m){
+            if(key=="j"){
+                f(key, value);
+                allwork.count_down();
+                workerThreadStoppedBarrier.arrive_and_drop();
+            }else {
+                f(key, value);
+                allwork.count_down();
+                workerThreadStoppedBarrier.arrive_and_wait();
+            }
+        }
+    }
+};
 
 
-void executeAction(std::string set, int id) {
-    synchronizedOut("Thread started\n");
-    f(set, id);
-    final.arrive_and_wait();
-}
+
 
 int main() {
-    std::latch l(6);
-    std::vector<Set> sets = {
-            { "a", {1,2,3,4,5,6} },
-            { "b", {1,2,3,4,5,6,7} },
-            { "c", {1,2,3,4,5,6,7,8,9} },
-            { "d", {1,2,3,4,5,6,7,8} },
-            { "e", {1,2,3,4,5} },
-            { "f", {1,2,3,4,5,6,7,8,9} }
-    };
+    std::map<int, std::multimap<std::string, int>> setmap=CreateMap();
+
     synchronizedOut("Start Working\n");
-    std::vector<std::jthread> threads;
-    int remainingElements = 0;
+    std::jthread t1(( WorkerThread( setmap[1] ) ) );
+    std::jthread t2(( WorkerThread( setmap[2] ) ) );
+    std::jthread t3(( WorkerThread( setmap[3] ) ) );
+    std::jthread t4(( WorkerThread( setmap[4] ) ) );
+    std::jthread t5(( WorkerThread( setmap[5] ) ) );
+    std::jthread t6(( WorkerThread( setmap[6] ) ) );
 
-    for (const Set& set : sets) {
+    allwork.wait();
+    synchronizedOut("End Working\n");
 
 
-        for (int i = 0; i < set.actionsIds.size(); i++) {
-            if (remainingElements == nt) {
-                remainingElements = 0;
-            }
-
-            threads.emplace_back(executeAction, set.setName, set.actionsIds[i]);
-            remainingElements++;
-        }
-
-        }
-    l.wait();
-    std::cout<<"End Working\n";
-    return 0;
+return 0;
 }
 
 

@@ -34,7 +34,7 @@ public:
 
 
 
-int main() {
+void execute(){
     std::map<int, std::multimap<std::string, int>> setmap=CreateMap();
 
     synchronizedOut("Start Working\n");
@@ -47,9 +47,11 @@ int main() {
 
     allwork.wait();
     synchronizedOut("End Working\n");
+}
 
-
-return 0;
+int main() {
+    execute();
+    return 0;
 }
 
 
